@@ -1,0 +1,50 @@
+# Evaluation configuration
+evaluation:
+  # Metric groups to compute
+  classic_metrics:
+    enabled: true
+    bleu: true
+    rouge: true
+    meteor: true
+    bertscore: true
+    bertscore_model: "microsoft/deberta-xlarge-mnli"
+
+  factuality_metrics:
+    enabled: true
+    activity_mention_f1: true
+    dominant_activity_accuracy: true
+    transition_accuracy: true
+    duration_bin_accuracy: true
+    duration_bins:
+      short: 60     # < 1 min
+      medium: 300   # 1-5 min
+      # > 5 min = long
+
+  grounding_metrics:
+    enabled: true
+    event_span_iou: true
+    unsupported_claim_rate: true
+    order_consistency: true
+
+  retrieval_metrics:
+    enabled: true
+    ks: [1, 5, 10]
+    directions: ["t2s", "s2t"]
+
+  # Composite early stopping score
+  composite_score:
+    grounding: 0.45
+    semantic: 0.35    # bertscore F1
+    lexical: 0.20     # ROUGE-L
+
+  # Human evaluation protocol
+  human_eval:
+    num_samples: 150
+    criteria: [faithfulness, helpfulness, conciseness]
+    models_to_compare: [template, best_baseline, full_model]
+
+  # Output formats
+  output:
+    csv: true
+    markdown: true
+    latex: true

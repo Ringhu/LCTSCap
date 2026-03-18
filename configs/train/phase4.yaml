@@ -1,0 +1,60 @@
+# Phase 4: Optional LLM bridge (Perceiver resampler + frozen LLM)
+phase: 4
+description: "Replace small decoder with Perceiver resampler + frozen LLM + LoRA"
+
+data:
+  dataset: capture24
+  data_root: /path/to/lctscap_data
+  context_len: 256  # fixed context for LLM bridge experiments
+  stride: 64
+  use_precomputed_embeddings: false
+  caption_source: mixed
+
+model:
+  _config: configs/model/default.yaml
+  modules:
+    local_encoder: frozen
+    channel_fusion: frozen
+    planner: frozen
+    event_head: frozen
+    aligner: frozen
+    decoder: skip  # replaced by LLM bridge
+    llm_bridge: train
+  llm_bridge:
+    enabled: true
+    llm_model_name: "Qwen/Qwen2.5-1.5B"
+    num_latents: 32
+    use_lora: true
+    lora_r: 16
+    lora_alpha: 32
+  init_from: ${data_root}/runs/phase3/checkpoints/best.pt
+
+training:
+  enabled: true
+  optimizer:
+    type: adamw
+    lr_new: 2.0e-4  # resampler
+    lr_lora: 1.0e-4  # LoRA adapters
+    weight_decay: 0.01
+  scheduler:
+    type: cosine
+    warmup_ratio: 0.1
+  batch_size: 8
+  grad_accumulation: 8
+  max_epochs: 20
+  patience: 5
+  loss_weights:
+    cap: 1.0
+    align: 0.0
+    event: 0.0
+    coverage: 0.0
+  early_stop_metric: "composite"
+  checkpoint_dir: ${data_root}/runs/phase4/checkpoints
+
+evaluation:
+  run_on: [val]
+  metrics: [bleu, rouge, meteor, bertscore, factuality, grounding]
+  eval_every_n_epochs: 1
+
+seed: 42
+num_workers: 4

@@ -1,0 +1,13 @@
+.claude/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+logs/
+src/*.egg-info/
+src/**/*.egg-info/
+
+advisor_update_deck_v2.pptx
+chat.md
+
+.DS_Store

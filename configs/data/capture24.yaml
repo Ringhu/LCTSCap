@@ -1,0 +1,45 @@
+# CAPTURE-24 data configuration
+dataset: capture24
+raw_dir: ${data_root}/raw/capture24
+processed_dir: ${data_root}/processed/capture24
+
+# Raw data properties
+original_sample_rate: 100
+target_sample_rate: 50
+num_channels: 3
+channel_names: ["x", "y", "z"]
+sensor_location: "wrist"
+
+# Window settings
+window_sec: 10
+window_samples: 500  # target_sample_rate * window_sec
+
+# Long-context settings
+context_lens: [128, 256, 512]
+strides: [32, 64]
+
+# Split settings
+split_by: "participant"
+train_ratio: 0.7
+val_ratio: 0.1
+test_ratio: 0.2
+split_seed: 42
+
+# Label mapping: raw fine-grained -> coarse activity types
+label_map:
+  walking: ["walking", "walking; carrying", "walking the dog", "walking; going upstairs", "walking; going downstairs"]
+  running: ["running", "jogging"]
+  sitting: ["sitting", "sitting; reading", "sitting; desk work", "sitting; eating", "sitting; watching TV", "sitting; talking", "sitting; knitting"]
+  standing: ["standing", "standing; cooking", "standing; washing up", "standing; ironing", "standing; talking"]
+  sleeping: ["sleeping"]
+  lying: ["lying down", "lying down; reading"]
+  cycling: ["cycling"]
+  vehicle: ["driving", "in a vehicle", "riding in a car", "on a bus"]
+  household: ["vacuuming", "mopping", "sweeping", "cleaning", "gardening", "DIY", "laundry"]
+  stairs: ["going upstairs", "going downstairs"]
+  self_care: ["dressing", "washing", "grooming", "bathing"]
+  eating: ["eating", "preparing food", "cooking"]
+  other: []  # catch-all for unmapped labels
+
+# Annotation settings
+segment_size: 32  # tokens per segment for summaries

@@ -1,0 +1,44 @@
+# HARTH data configuration
+dataset: harth
+raw_dir: ${data_root}/raw/harth
+processed_dir: ${data_root}/processed/harth
+
+# Raw data properties
+original_sample_rate: 50
+target_sample_rate: 50  # no downsampling needed
+num_channels: 6
+channel_names: ["back_x", "back_y", "back_z", "thigh_x", "thigh_y", "thigh_z"]
+sensor_locations: ["back", "thigh"]
+
+# Window settings
+window_sec: 10
+window_samples: 500  # target_sample_rate * window_sec
+
+# Long-context settings
+context_lens: [128, 256, 512]
+strides: [32, 64]
+
+# Split settings
+split_by: "subject"
+train_ratio: 0.6
+val_ratio: 0.0  # HARTH only has train/test
+test_ratio: 0.4
+split_seed: 42
+
+# Activity classes (12 types)
+activities:
+  - walking
+  - running
+  - shuffling
+  - stairs_up
+  - stairs_down
+  - standing
+  - sitting
+  - lying
+  - cycling_sit
+  - cycling_stand
+  - cycling_stand_inactive
+  - undefined
+
+# Annotation settings
+segment_size: 32

@@ -1,0 +1,50 @@
+# Phase 1: Retrieval + Event model training
+phase: 1
+description: "Train local encoder + planner + aligner (retrieval + event detection)"
+
+data:
+  dataset: capture24
+  data_root: /path/to/lctscap_data
+  context_len: 128
+  stride: 32
+  use_precomputed_embeddings: false
+
+model:
+  _config: configs/model/default.yaml
+  modules:
+    local_encoder: train
+    channel_fusion: train
+    planner: train
+    event_head: train
+    aligner: train
+    decoder: skip
+
+training:
+  enabled: true
+  optimizer:
+    type: adamw
+    lr_new: 3.0e-4
+    lr_adapter: 1.0e-5
+    weight_decay: 0.01
+  scheduler:
+    type: cosine
+    warmup_ratio: 0.05
+  batch_size: 4
+  grad_accumulation: 8
+  max_epochs: 30
+  patience: 5
+  loss_weights:
+    cap: 0.0
+    align: 1.0
+    event: 1.0
+    coverage: 0.0
+  early_stop_metric: "R@5"
+  checkpoint_dir: ${data_root}/runs/phase1/checkpoints
+
+evaluation:
+  run_on: [val]
+  metrics: [retrieval, factuality, grounding]
+  eval_every_n_epochs: 1
+
+seed: 42
+num_workers: 4

@@ -1,0 +1,21 @@
+# Phase 0: Template baseline — no training, evaluation only
+phase: 0
+description: "Template baseline evaluation (no neural training)"
+
+data:
+  dataset: capture24
+  data_root: /path/to/lctscap_data
+  context_lens: [128, 256, 512]
+
+model:
+  _config: configs/model/default.yaml
+
+training:
+  enabled: false  # no training in phase 0
+
+evaluation:
+  run_on: [test]
+  metrics: [bleu, rouge, meteor, bertscore, factuality, grounding]
+  output_dir: ${data_root}/runs/phase0_template
+
+seed: 42

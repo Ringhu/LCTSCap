@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lctscap"
+version = "0.1.0"
+description = "Hierarchical and Verifiable Long-Context Time Series Captioning"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "transformers>=4.40",
+    "accelerate>=0.30",
+    "datasets",
+    "sentence-transformers>=3.0",
+    "evaluate",
+    "rouge-score",
+    "nltk",
+    "bert-score",
+    "pydantic>=2.0",
+    "pyyaml",
+    "wandb",
+    "tqdm",
+    "pandas>=2.0",
+    "pyarrow",
+    "scipy",
+    "scikit-learn",
+    "matplotlib",
+    "numpy",
+]
+
+[project.optional-dependencies]
+moment = ["momentfm"]
+dev = ["pytest", "pytest-cov", "ruff"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

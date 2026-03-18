@@ -1,0 +1,59 @@
+# Default model configuration
+model:
+  # Module A: Local Encoder
+  local_encoder:
+    d_model: 512
+    patch_size: 25        # 500 / 25 = 20 patches per window
+    num_layers: 4
+    num_heads: 8
+    max_patches: 20
+    dropout: 0.1
+
+  # Channel Fusion
+  channel_fusion:
+    method: "attention"   # "attention" or "mean"
+
+  # Module B: Hierarchical Planner
+  planner:
+    d_model: 512
+    num_layers: 4
+    num_heads: 8
+    segment_size: 32
+    dropout: 0.1
+
+  # Event Proposal Head
+  event_head:
+    n_event_types: 20
+    max_events: 16
+
+  # Module C: Retrieval Aligner
+  aligner:
+    d_align: 256
+    text_model_name: "all-MiniLM-L6-v2"
+    freeze_text_encoder: true
+
+  # Module D: Caption Decoder
+  decoder:
+    d_model: 512
+    vocab_size: 50257     # GPT2 tokenizer
+    num_layers: 6
+    num_heads: 8
+    max_seq_len: 256
+    dropout: 0.1
+    tokenizer_name: "gpt2"
+
+  # LLM Bridge (Phase 4, optional)
+  llm_bridge:
+    enabled: false
+    llm_model_name: "Qwen/Qwen2.5-1.5B"
+    num_latents: 32
+    use_lora: true
+    lora_r: 16
+    lora_alpha: 32
+
+# Ablation flags
+ablation:
+  no_align: false
+  no_hierarchy: false
+  no_event: false
+  no_coverage: false

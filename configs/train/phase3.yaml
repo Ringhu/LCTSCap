@@ -1,0 +1,59 @@
+# Phase 3: Add LLM paraphrase data + context=512
+phase: 3
+description: "Add LLM paraphrase captions and extend to context=512"
+
+data:
+  dataset: capture24
+  data_root: /path/to/lctscap_data
+  context_lens: [128, 256, 512]
+  stride: 64
+  use_precomputed_embeddings: false
+  caption_source: mixed  # template + LLM paraphrase
+
+model:
+  _config: configs/model/default.yaml
+  modules:
+    local_encoder: frozen
+    channel_fusion: train
+    planner: train
+    event_head: train
+    aligner: train  # unfreeze for fine-tuning with paraphrases
+    decoder: train
+  init_from: ${data_root}/runs/phase2/checkpoints/best.pt
+
+training:
+  enabled: true
+  optimizer:
+    type: adamw
+    lr_new: 1.0e-4  # lower lr for fine-tuning
+    lr_adapter: 5.0e-6
+    weight_decay: 0.01
+  scheduler:
+    type: cosine
+    warmup_ratio: 0.05
+  batch_size_per_ctx:
+    128: 32
+    256: 16
+    512: 8
+  grad_accumulation: 4  # larger effective batch for stability
+  max_epochs: 30
+  patience: 5
+  loss_weights:
+    cap: 1.0
+    align: 0.5
+    event: 0.5
+    coverage: 0.2
+  early_stop_metric: "composite"
+  early_stop_weights:
+    grounding: 0.45
+    semantic: 0.35
+    lexical: 0.20
+  checkpoint_dir: ${data_root}/runs/phase3/checkpoints
+
+evaluation:
+  run_on: [val]
+  metrics: [bleu, rouge, meteor, bertscore, factuality, grounding, retrieval]
+  eval_every_n_epochs: 1
+
+seed: 42
+num_workers: 4
