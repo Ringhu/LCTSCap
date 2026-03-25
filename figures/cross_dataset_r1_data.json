@@ -1,0 +1,23 @@
+{
+  "capture24_main": [
+    {"dataset": "CAPTURE24-template", "group": "CAPTURE24", "s2t_r1": 1.0, "t2s_r1": 1.0, "note": "GT events -> template"}
+  ],
+  "ucr": [
+    {"dataset": "Wafer", "group": "UCR", "s2t_r1": 0.8921155334, "t2s_r1": 0.8843283653},
+    {"dataset": "FordA", "group": "UCR", "s2t_r1": 0.5159090757, "t2s_r1": 0.4848484993},
+    {"dataset": "ECG200", "group": "UCR", "s2t_r1": 0.3600000143, "t2s_r1": 0.3600000143},
+    {"dataset": "RefrigDevices", "group": "UCR", "s2t_r1": 0.3333333433, "t2s_r1": 0.3333333433}
+  ],
+  "uea": [
+    {"dataset": "Heartbeat", "group": "UEA", "s2t_r1": 0.7219512463, "t2s_r1": 0.2780487835},
+    {"dataset": "BasicMotions", "group": "UEA", "s2t_r1": 0.5, "t2s_r1": 0.25},
+    {"dataset": "AtrialFib", "group": "UEA", "s2t_r1": 1.0, "t2s_r1": 0.3333333433},
+    {"dataset": "RacketSports", "group": "UEA", "s2t_r1": 0.0, "t2s_r1": 0.2236842066},
+    {"dataset": "StandWalkJump", "group": "UEA", "s2t_r1": 0.0, "t2s_r1": 0.2666666806}
+  ],
+  "uea_long": [
+    {"dataset": "MotorImagery", "group": "UEA-long", "s2t_r1": 0.5, "t2s_r1": 0.5},
+    {"dataset": "HandMoveDir", "group": "UEA-long", "s2t_r1": 0.3918918967, "t2s_r1": 0.4054054022},
+    {"dataset": "Cricket", "group": "UEA-long", "s2t_r1": 0.0833333358, "t2s_r1": 0.0833333358}
+  ]
+}
