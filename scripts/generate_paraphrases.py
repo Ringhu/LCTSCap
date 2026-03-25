@@ -13,7 +13,7 @@ def main():
     parser.add_argument(
         "--model",
         type=str,
-        default="Qwen/Qwen2.5-7B-Instruct",
+        default="Qwen/Qwen3-4B",
         help="LLM model for paraphrasing",
     )
     parser.add_argument("--batch_size", type=int, default=8)

@@ -116,8 +116,9 @@ def extract_events_info(sample_dict):
     return list(activities), dominant, durations, transitions, spans
 
 
-def extract_prediction_info(prediction_text):
-    """Extract structured claims from a predicted caption."""
+def extract_prediction_info(prediction_obj):
+    """Extract structured claims and optional explicit evidence from a prediction object."""
+    prediction_text = prediction_obj.get("prediction", "")
     claims = parse_claims(prediction_text)
 
     activities = set()
@@ -138,6 +139,27 @@ def extract_prediction_info(prediction_text):
     pred_order = extract_temporal_order(prediction_text)
     dominant = pred_order[0] if pred_order else "unknown"
 
+    evidence_events = prediction_obj.get("predicted_events", []) or []
+    evidence_spans: List[Tuple[int, int]] = []
+    evidence_claims: List[dict] = []
+    evidence_order: List[str] = []
+    for item in evidence_events:
+        activity = item.get("activity")
+        start = item.get("start_token")
+        end = item.get("end_token")
+        if activity:
+            evidence_order.append(activity)
+        if start is not None and end is not None:
+            span = (int(start), int(end))
+            evidence_spans.append(span)
+            evidence_claims.append(
+                {
+                    "activity": activity,
+                    "start": int(start),
+                    "end": int(end),
+                }
+            )
+
     return {
         "claims": claims,
         "activities": activities,
@@ -146,6 +168,10 @@ def extract_prediction_info(prediction_text):
         "transitions": transitions,
         "spans": spans,
         "order": pred_order,
+        "evidence_events": evidence_events,
+        "evidence_spans": evidence_spans,
+        "evidence_claims": evidence_claims,
+        "evidence_order": evidence_order,
     }
 
 
@@ -190,7 +216,7 @@ def run_evaluation(predictions, gold, skip_bertscore=False):
 
     for sid in common_ids:
         # Pred: extract from text
-        pred_info = extract_prediction_info(predictions[sid].get("prediction", ""))
+        pred_info = extract_prediction_info(predictions[sid])
         pred_act = pred_info["activities"] or extract_activities_from_text(predictions[sid].get("prediction", ""))
         pred_activities.append(pred_act)
 
@@ -231,18 +257,25 @@ def run_evaluation(predictions, gold, skip_bertscore=False):
     oc_scores = []
     unsupported_scores = []
     verification_precisions = []
+    evidence_iou_scores = []
+    evidence_unsupported_scores = []
+    evidence_order_scores = []
 
     for sid in common_ids:
         g_acts, _, _, _, g_spans = extract_events_info(gold[sid])
-        pred_info = extract_prediction_info(predictions[sid].get("prediction", ""))
+        pred_info = extract_prediction_info(predictions[sid])
         pred_act_list = pred_info["order"] or list(pred_info["activities"])
 
         if pred_info["spans"] or g_spans:
             iou_scores.append(event_span_iou(pred_info["spans"], g_spans))
+        if pred_info["evidence_spans"] or g_spans:
+            evidence_iou_scores.append(event_span_iou(pred_info["evidence_spans"], g_spans))
 
         # Per-sample order consistency
         if len(g_acts) >= 2:
             oc_scores.append(order_consistency(pred_act_list, g_acts))
+            if pred_info["evidence_order"]:
+                evidence_order_scores.append(order_consistency(pred_info["evidence_order"], g_acts))
 
         claim_dicts = []
         for claim in pred_info["claims"]:
@@ -254,6 +287,14 @@ def run_evaluation(predictions, gold, skip_bertscore=False):
         unsupported_scores.append(
             unsupported_claim_rate(claim_dicts, gold[sid].get("events", []), ACTIVITY_VOCAB)
         )
+        if pred_info["evidence_claims"]:
+            evidence_unsupported_scores.append(
+                unsupported_claim_rate(
+                    pred_info["evidence_claims"],
+                    gold[sid].get("events", []),
+                    ACTIVITY_VOCAB,
+                )
+            )
         verification_report = verify_claims(
             pred_info["claims"],
             [
@@ -271,6 +312,17 @@ def run_evaluation(predictions, gold, skip_bertscore=False):
         results["unsupported_claim_rate"] = sum(unsupported_scores) / len(unsupported_scores)
     if verification_precisions:
         results["verification_precision"] = sum(verification_precisions) / len(verification_precisions)
+    if evidence_iou_scores:
+        results["event_evidence_span_iou"] = sum(evidence_iou_scores) / len(evidence_iou_scores)
+    if evidence_unsupported_scores:
+        results["event_evidence_unsupported_rate"] = (
+            sum(evidence_unsupported_scores) / len(evidence_unsupported_scores)
+        )
+        results["event_evidence_precision"] = 1.0 - results["event_evidence_unsupported_rate"]
+    if evidence_order_scores:
+        results["event_evidence_order_consistency"] = sum(evidence_order_scores) / len(
+            evidence_order_scores
+        )
 
     return results
 

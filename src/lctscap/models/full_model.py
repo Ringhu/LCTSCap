@@ -6,7 +6,7 @@ Assembles the complete pipeline:
 Each component can be ablated via configuration flags.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
@@ -232,6 +232,7 @@ class LCTSCapModel(nn.Module):
         x: torch.Tensor,
         captions: Optional[List[str]] = None,
         target_ids: Optional[torch.Tensor] = None,
+        target_mask: Optional[torch.Tensor] = None,
         events_gt: Optional[Dict[str, torch.Tensor]] = None,
     ) -> Dict[str, Any]:
         """Full forward pass.
@@ -244,6 +245,8 @@ class LCTSCapModel(nn.Module):
             Text captions for alignment loss (one per batch element).
         target_ids : Tensor [B, S_dec] or None
             Target token IDs for teacher-forced caption generation.
+        target_mask : Tensor [B, S_dec] or None
+            Attention mask for valid decoder input tokens.
         events_gt : dict or None
             Ground-truth event annotations for event loss.
 
@@ -281,7 +284,7 @@ class LCTSCapModel(nn.Module):
         if target_ids is not None:
             # Use segment-level representations as encoder output for cross-attn
             encoder_output = H_seg if H_seg is not None else H_token
-            caption_logits = self.decoder(encoder_output, target_ids)
+            caption_logits = self.decoder(encoder_output, target_ids, target_mask=target_mask)
             results["caption_logits"] = caption_logits
 
         return results

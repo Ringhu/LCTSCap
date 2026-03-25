@@ -92,6 +92,7 @@ class CaptionDecoder(nn.Module):
         self,
         encoder_output: torch.Tensor,
         target_ids: torch.Tensor,
+        target_mask: torch.Tensor | None = None,
     ) -> torch.Tensor:
         """Teacher-forced forward pass.
 
@@ -118,12 +119,16 @@ class CaptionDecoder(nn.Module):
 
         # Causal mask
         tgt_mask = self._make_causal_mask(S_dec, target_ids.device)
+        tgt_key_padding_mask = None
+        if target_mask is not None:
+            tgt_key_padding_mask = ~target_mask.bool()
 
         # Decode
         dec_out = self.decoder_layers(
             tgt=tok_emb,
             memory=memory,
             tgt_mask=tgt_mask,
+            tgt_key_padding_mask=tgt_key_padding_mask,
         )  # [B, S_dec, d]
 
         logits = self.output_head(dec_out)  # [B, S_dec, vocab_size]

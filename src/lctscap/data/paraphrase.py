@@ -1,7 +1,7 @@
 """LLM-based paraphrase pipeline for LCTSCap.
 
 Converts template-generated captions into more natural language using
-a local LLM (e.g. Qwen2.5-7B), then verifies the paraphrase preserves
+a local LLM (e.g. Qwen3-4B), then verifies the paraphrase preserves
 factual consistency with the original events.
 """
 
@@ -87,7 +87,7 @@ def build_paraphrase_prompt(
 def paraphrase_caption(
     template: str,
     events: List[Event],
-    model_name: str = "qwen2.5-7b",
+    model_name: str = "Qwen/Qwen3-4B",
 ) -> str:
     """Paraphrase a template caption using a local LLM.
 
@@ -331,7 +331,7 @@ class ParaphrasePipeline:
 
     def __init__(
         self,
-        model_name: str = "Qwen/Qwen2.5-7B-Instruct",
+        model_name: str = "Qwen/Qwen3-4B",
         batch_size: int = 8,
         keep_invalid: bool = False,
     ) -> None:

@@ -11,14 +11,12 @@ Usage:
 import argparse
 import json
 import logging
-import math
-import os
 import random
 import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Dict, Optional, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import torch
@@ -318,7 +316,13 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, device, cfg, grad_a
         captions = batch.get("caption_short")
 
         # Tokenized targets for the decoder (only if tokenizer was used)
+        decoder_input_ids = batch.get("decoder_input_ids")
+        decoder_attention_mask = batch.get("decoder_attention_mask")
         target_ids = batch.get("target_ids")
+        if decoder_input_ids is not None:
+            decoder_input_ids = decoder_input_ids.to(device)
+        if decoder_attention_mask is not None:
+            decoder_attention_mask = decoder_attention_mask.to(device)
         if target_ids is not None:
             target_ids = target_ids.to(device)
 
@@ -330,7 +334,8 @@ def train_one_epoch(model, dataloader, optimizer, scheduler, device, cfg, grad_a
         outputs = model(
             x=ts_input,
             captions=captions if not cfg.no_align else None,
-            target_ids=target_ids,
+            target_ids=decoder_input_ids,
+            target_mask=decoder_attention_mask,
             events_gt=events_gt,
         )
 
@@ -413,7 +418,13 @@ def validate(model, dataloader, device, cfg):
 
     for batch in dataloader:
         ts_input = batch["ts_input"].to(device)
+        decoder_input_ids = batch.get("decoder_input_ids")
+        decoder_attention_mask = batch.get("decoder_attention_mask")
         target_ids = batch.get("target_ids")
+        if decoder_input_ids is not None:
+            decoder_input_ids = decoder_input_ids.to(device)
+        if decoder_attention_mask is not None:
+            decoder_attention_mask = decoder_attention_mask.to(device)
         if target_ids is not None:
             target_ids = target_ids.to(device)
 
@@ -425,7 +436,8 @@ def validate(model, dataloader, device, cfg):
         outputs = model(
             x=ts_input,
             captions=captions if not cfg.no_align else None,
-            target_ids=target_ids,
+            target_ids=decoder_input_ids,
+            target_mask=decoder_attention_mask,
             events_gt=events_gt,
         )
 

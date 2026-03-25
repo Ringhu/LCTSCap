@@ -133,7 +133,7 @@ class LLMBridge(nn.Module):
     def __init__(
         self,
         d_model: int,
-        llm_model_name: str = "meta-llama/Llama-2-7b-hf",
+        llm_model_name: str = "Qwen/Qwen3-1.7B",
         num_latents: int = 32,
         llm_hidden_dim: int | None = None,
     ):

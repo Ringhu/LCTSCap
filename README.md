@@ -1,97 +1,136 @@
-# LCTSCap: Hierarchical and Verifiable Long-Context Time Series Captioning
+# LCTSCap
 
-## Overview
+<!-- AUTO_SYNC_STATUS:START -->
+## 自动同步状态
 
-LCTSCap is a research system for generating hierarchical, verifiable natural language descriptions of long time series data. Unlike existing time series captioning work that handles short sequences (a few to dozens of time steps), LCTSCap operates on **long-context semantic token sequences** (128/256/512 tokens, where each token represents a 10-second window of sensor data).
+- 同步时间：`2026-03-25 00:48:44`
+- 当前主线：`hierarchical long-context time-series captioning with grounding-aware evaluation`
+- 当前下一步：当前没有待启动实验；应整理结果并准备下一轮 review。
+- 详细入口：`docs/DOC_INDEX.md`
+- 最新状态页：`refine-logs/LATEST_STATUS.md`
+<!-- AUTO_SYNC_STATUS:END -->
 
-## Key Innovation
+当前进度看 `PROGRESS.md`。文档入口看 `docs/DOC_INDEX.md`。
 
-- **Long-context captioning**: Each "token" is a 10-second window embedding, so 128/256/512 tokens = ~21/43/85 minutes of real-world sensor data
-- **Hierarchical annotation**: 3-level structure (global summary → segment summaries → event table with evidence)
-- **Verifiable generation**: Every caption claim can be traced back to evidence in the event table
-- **Retrieval-augmented alignment**: CLIP-like dual encoder for TS↔text retrieval and caption verification
+## 项目简介
 
-## Installation
+LCTSCap 做的是长时间序列短描述生成。当前唯一主线是：
+
+> hierarchical long-context time-series captioning with grounding-aware evaluation
+
+当前主设置输入 `128 / 256` 个语义 token。每个 token 对应 `10` 秒窗口。输出是 `1-2` 句 factual caption。
+
+当前不提前扩展到：`Phase 3`、`ctx=512`、`Phase 4 / LLMBridge`、大规模 auxiliary benchmark 主表、人工评测。
+
+## 新接手先看什么
+
+- 先看 `PROGRESS.md`。这里写当前主线、阶段、风险和下一步。
+- 再看 `SPEC.md`。这里写模型合同、阶段边界和评测口径。
+- 需要导师汇报或论文口径时看 `RESEARCH_BRIEF.md`。
+- 需要 run 台账时看 `refine-logs/EXPERIMENT_TRACKER.md`。
+
+## 目录结构
+
+```text
+src/lctscap/                 主代码
+  ├── data/                  数据处理与标注
+  ├── models/                模型模块
+  ├── eval/                  评测与报告
+scripts/                     训练、推理、评测、同步脚本
+configs/                     数据/模型/训练配置
+tests/                       单元测试
+refine-logs/                 研究整理记录与实验台账
+docs/plans/                  当前仍在执行的临时计划页
+```
+
+## 环境与安装
 
 ```bash
-# Create conda environment
 conda create -n lctscap python=3.12 -y
 conda activate lctscap
-
-# Install the package
 pip install -e .
-
-# Or with MOMENT encoder support
-pip install -e ".[moment]"
-
-# Or with dev dependencies
 pip install -e ".[dev]"
+pip install -e ".[moment]"   # 可选
 ```
 
-## Project Structure
-
-```
-LCTSCap/
-├── configs/                  # YAML configuration files
-│   ├── data/                 # Dataset configs (capture24, harth)
-│   ├── model/                # Model architecture config
-│   ├── train/                # Training phase configs (phase0-4)
-│   └── eval/                 # Evaluation config
-├── src/lctscap/              # Main package
-│   ├── config.py             # Dataclass configuration
-│   ├── data/                 # Data loading, preprocessing, annotation
-│   ├── models/               # All model modules
-│   ├── eval/                 # Evaluation metrics and reporting
-│   ├── baselines/            # Template and retrieval baselines
-│   └── utils/                # I/O, logging, visualization
-├── scripts/                  # CLI scripts for all pipeline stages
-├── tests/                    # Unit tests
-└── notebooks/                # Analysis notebooks
-```
-
-## Data
-
-- **Primary dataset**: [CAPTURE-24](https://github.com/OxWearables/capture24) — 151 participants, ~24h/person, 100Hz 3-axis wrist accelerometer
-- **Validation dataset**: [HARTH](https://archive.ics.uci.edu/dataset/779/harth) — 22 subjects, 50Hz, 6-axis (back+thigh)
-- Data stored at: `/path/to/lctscap_data/`
-
-## Quick Start
+## 常用命令
 
 ```bash
-# 1. Download data
-python scripts/download_data.py --dataset capture24 --output_dir /path/to/lctscap_data/raw
-
-# 2. Preprocess
+# 数据预处理
 python scripts/preprocess.py --dataset capture24 --config configs/data/capture24.yaml
-
-# 3. Generate annotations
 python scripts/generate_annotations.py --manifest_dir /path/to/lctscap_data/processed/capture24
 
-# 4. Run template baseline
-python scripts/run_baseline.py --type template --config configs/train/phase0.yaml
+# 训练
+CUDA_VISIBLE_DEVICES=2 python scripts/train.py --config configs/train/phase1.yaml
+CUDA_VISIBLE_DEVICES=2 python scripts/train.py --config configs/train/phase2_bosfix.yaml
+CUDA_VISIBLE_DEVICES=2 python scripts/train.py --config configs/train/phase2_flat.yaml
+CUDA_VISIBLE_DEVICES=2 python scripts/train.py --config configs/train/phase2_noalign.yaml
 
-# 5. Train main model (curriculum)
-python scripts/train.py --config configs/train/phase1.yaml
-python scripts/train.py --config configs/train/phase2.yaml
-python scripts/train.py --config configs/train/phase3.yaml
-
-# 6. Evaluate
-python scripts/evaluate.py --predictions_path /path/to/predictions.jsonl --gold_path /path/to/gold.jsonl
+# 基础推理与评测
+python scripts/generate_predictions.py --config configs/train/phase2_bosfix.yaml --checkpoint /path/to/best.pt --data_root /path/to/lctscap_data --split val
+python scripts/evaluate.py --predictions_path /path/to/predictions.jsonl --gold_path /path/to/annotations --skip_bertscore
 ```
 
-## Training Curriculum
+## R007 正式命令模板
 
-| Phase | What | Context | Data | Key Metric |
-|-------|------|---------|------|------------|
-| 0 | Template baseline (no training) | 128/256/512 | Template | Factuality |
-| 1 | Local encoder + Planner + Aligner | 128 | Template | R@5, Event F1 |
-| 2 | + Caption decoder | 128, 256 | Template | Composite |
-| 3 | + LLM paraphrase + ctx=512 | 128,256,512 | Template+Paraphrase | Composite |
-| 4 | + LLM bridge (optional) | 256 | All | Composite |
+`R007` 只比较 full 和 `noalign`。两边必须同口径生成，只换模型，不换解码策略。
 
-## Evaluation Metrics
+```bash
+CUDA_VISIBLE_DEVICES=2 python scripts/generate_predictions.py \
+  --config configs/train/phase2_bosfix.yaml \
+  --checkpoint /cluster1/user1/lctscap_data/runs/phase2_bosfix/checkpoints/best.pt \
+  --data_root /cluster1/user1/lctscap_data \
+  --split test \
+  --output_path outputs/r007/full_test_predictions.jsonl \
+  --restrict_to_caption_vocab \
+  --caption_vocab_split train \
+  --repetition_penalty 1.1 \
+  --no_repeat_ngram_size 3
 
-- **Classic**: BLEU, ROUGE-L, METEOR, BERTScore
-- **Factuality**: Activity mention F1, dominant activity accuracy, transition accuracy, duration-bin accuracy
-- **Grounding**: Event span IoU, unsupported claim rate, order consistency
-- **Retrieval**: R@1/R@5/R@10 (bidirectional)
+CUDA_VISIBLE_DEVICES=2 python scripts/generate_predictions.py \
+  --config configs/train/phase2_noalign.yaml \
+  --checkpoint /cluster1/user1/lctscap_data/runs/phase2_noalign/checkpoints/best.pt \
+  --data_root /cluster1/user1/lctscap_data \
+  --split test \
+  --output_path outputs/r007/noalign_test_predictions.jsonl \
+  --restrict_to_caption_vocab \
+  --caption_vocab_split train \
+  --repetition_penalty 1.1 \
+  --no_repeat_ngram_size 3
+
+python scripts/evaluate.py \
+  --predictions_path outputs/r007/full_test_predictions.jsonl \
+  --gold_path /cluster1/user1/lctscap_data/processed/capture24/annotations \
+  --output_dir outputs/r007/eval_full \
+  --skip_bertscore \
+  --compare_with outputs/r007/noalign_test_predictions.jsonl
+```
+
+## 当前推理侧清洗开关
+
+```bash
+# 受限解码：压住脏符号和重复模式
+python scripts/generate_predictions.py \
+  --config configs/train/phase2_bosfix.yaml \
+  --checkpoint /path/to/best.pt \
+  --data_root /path/to/lctscap_data \
+  --split val \
+  --restrict_to_caption_vocab \
+  --caption_vocab_split train \
+  --repetition_penalty 1.1 \
+  --no_repeat_ngram_size 3
+
+# 证据文本诊断：把 predicted_events 写进可解析文本
+python scripts/generate_predictions.py \
+  --config configs/train/phase2_bosfix.yaml \
+  --checkpoint /path/to/best.pt \
+  --data_root /path/to/lctscap_data \
+  --split val \
+  --emit_event_evidence \
+  --evidence_text_mode append
+```
+
+说明：
+- 受限解码现在只算文本清洗层。它能止住脏格式，不能替代训练侧修复。
+- `--emit_event_evidence` 和 `evidence_text_mode` 现在只算诊断功能。主比较默认不要混进去。
+- 当前论文承诺的是 grounding-aware evaluation，不是强 verifiable captioning。

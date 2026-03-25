@@ -8,7 +8,6 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import torch
-from torch.nn.utils.rnn import pad_sequence
 
 logger = logging.getLogger(__name__)
 
@@ -96,8 +95,10 @@ class LCTSCapCollator:
             result["caption_short_mask"] = short_enc["attention_mask"]
             result["caption_long_ids"] = long_enc["input_ids"]
             result["caption_long_mask"] = long_enc["attention_mask"]
-            # Create target_ids for decoder (shifted caption_short_ids)
-            result["target_ids"] = short_enc["input_ids"]
+            decoder_inputs = self._build_decoder_sequences(short_enc)
+            result["decoder_input_ids"] = decoder_inputs["decoder_input_ids"]
+            result["decoder_attention_mask"] = decoder_inputs["decoder_attention_mask"]
+            result["target_ids"] = decoder_inputs["target_ids"]
 
         # --- Events ---
         events_batch = [item["events"] for item in batch]
@@ -152,6 +153,63 @@ class LCTSCapCollator:
         return {
             "input_ids": encoded["input_ids"],
             "attention_mask": encoded["attention_mask"],
+        }
+
+    def _build_decoder_sequences(
+        self,
+        encoded: Dict[str, torch.Tensor],
+    ) -> Dict[str, torch.Tensor]:
+        """Create decoder inputs and labels with explicit BOS/EOS handling."""
+        input_ids = encoded["input_ids"]
+        attention_mask = encoded["attention_mask"]
+
+        pad_token_id = getattr(self.tokenizer, "pad_token_id", 0)
+        eos_token_id = getattr(self.tokenizer, "eos_token_id", pad_token_id)
+        bos_token_id = getattr(self.tokenizer, "bos_token_id", None)
+        if bos_token_id is None:
+            bos_token_id = eos_token_id
+
+        decoder_inputs = []
+        decoder_masks = []
+        target_ids = []
+        max_len = 0
+
+        for ids, mask in zip(input_ids, attention_mask):
+            valid_ids = ids[mask.bool()]
+            decoder_input = torch.cat(
+                [
+                    torch.tensor([bos_token_id], dtype=torch.long),
+                    valid_ids.to(dtype=torch.long),
+                ]
+            )
+            target = torch.cat(
+                [
+                    valid_ids.to(dtype=torch.long),
+                    torch.tensor([eos_token_id], dtype=torch.long),
+                ]
+            )
+            decoder_inputs.append(decoder_input)
+            target_ids.append(target)
+            decoder_masks.append(torch.ones_like(decoder_input, dtype=torch.long))
+            max_len = max(max_len, decoder_input.size(0))
+
+        batch_size = len(decoder_inputs)
+        padded_inputs = torch.full((batch_size, max_len), pad_token_id, dtype=torch.long)
+        padded_masks = torch.zeros((batch_size, max_len), dtype=torch.long)
+        padded_targets = torch.full((batch_size, max_len), -100, dtype=torch.long)
+
+        for i, (decoder_input, decoder_mask, target) in enumerate(
+            zip(decoder_inputs, decoder_masks, target_ids)
+        ):
+            seq_len = decoder_input.size(0)
+            padded_inputs[i, :seq_len] = decoder_input
+            padded_masks[i, :seq_len] = decoder_mask
+            padded_targets[i, :seq_len] = target
+
+        return {
+            "decoder_input_ids": padded_inputs,
+            "decoder_attention_mask": padded_masks,
+            "target_ids": padded_targets,
         }
 
     def _events_to_per_token(

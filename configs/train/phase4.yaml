@@ -22,7 +22,7 @@ model:
     llm_bridge: train
   llm_bridge:
     enabled: true
-    llm_model_name: "Qwen/Qwen2.5-1.5B"
+    llm_model_name: "Qwen/Qwen3-1.7B"
     num_latents: 32
     use_lora: true
     lora_r: 16

@@ -1,6 +1,6 @@
 """Retrieval metrics: similarity matrix, R@k, MRR, MedR for cross-modal retrieval."""
 
-from typing import Dict, List
+from typing import Dict, List, Sequence
 
 import torch
 from torch import Tensor
@@ -91,4 +91,69 @@ def compute_retrieval_metrics(
     # series-to-text: transpose so series queries across text columns
     results.update(_retrieval_metrics_one_direction(sim_matrix.t(), ks, prefix="s2t"))
 
+    return results
+
+
+def _grouped_retrieval_metrics_one_direction(
+    sim_matrix: Tensor,
+    query_labels: Sequence[str],
+    gallery_labels: Sequence[str],
+    ks: List[int],
+    prefix: str,
+) -> Dict[str, float]:
+    """Compute retrieval metrics when every label can have multiple positives."""
+    if sim_matrix.size(0) != len(query_labels):
+        raise ValueError("query_labels must match the number of query rows.")
+    if sim_matrix.size(1) != len(gallery_labels):
+        raise ValueError("gallery_labels must match the number of gallery columns.")
+
+    sorted_indices = sim_matrix.argsort(dim=-1, descending=True)
+    ranks = []
+
+    for row_idx, query_label in enumerate(query_labels):
+        ranked_cols = sorted_indices[row_idx].tolist()
+        rank = len(ranked_cols) + 1
+        for pos, col_idx in enumerate(ranked_cols, start=1):
+            if gallery_labels[col_idx] == query_label:
+                rank = pos
+                break
+        ranks.append(rank)
+
+    ranks_float = torch.tensor(ranks, dtype=torch.float32, device=sim_matrix.device)
+    results: Dict[str, float] = {}
+    for k in ks:
+        results[f"{prefix}_R@{k}"] = (ranks_float <= k).float().mean().item()
+    results[f"{prefix}_MRR"] = (1.0 / ranks_float).mean().item()
+    results[f"{prefix}_MedR"] = ranks_float.median().item()
+    return results
+
+
+def compute_grouped_retrieval_metrics(
+    sim_matrix: Tensor,
+    labels: Sequence[str],
+    ks: List[int] | None = None,
+) -> Dict[str, float]:
+    """Compute bidirectional retrieval metrics for repeated-label datasets."""
+    if ks is None:
+        ks = [1, 5, 10]
+
+    results: Dict[str, float] = {}
+    results.update(
+        _grouped_retrieval_metrics_one_direction(
+            sim_matrix,
+            query_labels=labels,
+            gallery_labels=labels,
+            ks=ks,
+            prefix="t2s",
+        )
+    )
+    results.update(
+        _grouped_retrieval_metrics_one_direction(
+            sim_matrix.t(),
+            query_labels=labels,
+            gallery_labels=labels,
+            ks=ks,
+            prefix="s2t",
+        )
+    )
     return results

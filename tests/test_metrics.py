@@ -115,3 +115,21 @@ def test_retrieval_recall_identity():
     metrics = compute_retrieval_metrics(sim, ks=[1, 5])
     assert metrics["t2s_R@1"] == 1.0
     assert metrics["s2t_R@1"] == 1.0
+
+
+def test_grouped_retrieval_metrics_handle_repeated_labels():
+    from lctscap.eval.retrieval import compute_grouped_retrieval_metrics
+    import torch
+
+    sim = torch.tensor(
+        [
+            [0.9, 0.8, 0.1, 0.2],
+            [0.7, 0.95, 0.2, 0.1],
+            [0.1, 0.2, 0.9, 0.85],
+            [0.2, 0.1, 0.88, 0.92],
+        ]
+    )
+    labels = ["A", "A", "B", "B"]
+    metrics = compute_grouped_retrieval_metrics(sim, labels, ks=[1, 2])
+    assert metrics["t2s_R@1"] == 1.0
+    assert metrics["s2t_R@1"] == 1.0

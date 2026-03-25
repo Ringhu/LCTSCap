@@ -1,5 +1,4 @@
 """Tests for model component shapes and ablation modes."""
-import pytest
 import torch
 
 
@@ -60,7 +59,8 @@ def test_decoder_shapes():
     dec = CaptionDecoder(d_model=64, vocab_size=100, num_layers=1, num_heads=4, max_seq_len=32)
     encoder_out = torch.randn(2, 4, 64)  # 4 segments
     tgt_ids = torch.randint(0, 100, (2, 10))
-    logits = dec(encoder_out, tgt_ids)
+    tgt_mask = torch.tensor([[1] * 10, [1] * 8 + [0] * 2])
+    logits = dec(encoder_out, tgt_ids, target_mask=tgt_mask)
     assert logits.shape == (2, 10, 100)
 
 
